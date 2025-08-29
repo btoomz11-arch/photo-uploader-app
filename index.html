@@ -47,17 +47,24 @@
                     <button id="signout_button" class="text-sm text-red-500 hover:text-red-700 font-semibold">ออกจากระบบ</button>
                 </div>
 
-                <!-- 1. เลือกโปรเจกต์ -->
+                <!-- 1. เลือก/สร้างโปรเจกต์ -->
                 <div class="mb-6">
-                    <label for="project-select" class="block text-gray-700 text-lg font-bold mb-2">1. เลือกโปรเจกต์</label>
-                    <select id="project-select" class="block w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-gray-500">
-                        <!-- ตัวเลือกโปรเจกต์จะถูกเพิ่มที่นี่โดย JavaScript -->
-                    </select>
+                    <label for="project-input" class="block text-gray-700 text-lg font-bold mb-2">1. เลือกหรือสร้างโปรเจกต์</label>
+                    <input type="text" id="project-input" list="project-list" class="block w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-gray-500" placeholder="พิมพ์เพื่อค้นหาหรือสร้างใหม่...">
+                    <datalist id="project-list">
+                        <!-- ตัวเลือกโปรเจกต์เก่าจะถูกเพิ่มที่นี่ -->
+                    </datalist>
                 </div>
 
-                <!-- 2. เลือกรูปภาพ -->
+                <!-- 2. เลือกวันที่ -->
                 <div class="mb-6">
-                    <label class="block text-gray-700 text-lg font-bold mb-2">2. ถ่าย/เลือกรูปภาพ</label>
+                    <label for="date-input" class="block text-gray-700 text-lg font-bold mb-2">2. เลือกวันที่บันทึก</label>
+                    <input type="date" id="date-input" class="block w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-gray-500">
+                </div>
+
+                <!-- 3. เลือกรูปภาพ -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-lg font-bold mb-2">3. ถ่าย/เลือกรูปภาพ</label>
                     <label for="file-input" class="w-full flex items-center justify-center px-4 py-6 bg-white text-blue-500 rounded-lg shadow-md tracking-wide uppercase border border-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white transition duration-300">
                         <svg class="w-8 h-8 mr-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                             <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3v-4h2v4z" />
@@ -67,13 +74,13 @@
                     <input type="file" id="file-input" class="hidden" accept="image/*" multiple capture="environment">
                 </div>
 
-                <!-- 3. แสดงตัวอย่างรูปภาพ -->
+                <!-- แสดงตัวอย่างรูปภาพ -->
                 <div id="preview-container" class="mb-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     <!-- รูปตัวอย่างจะแสดงที่นี่ -->
                 </div>
-                <p id="no-files-text" class="text-center text-gray-500 hidden">ยังไม่มีรูปภาพที่เลือก</p>
+                <p id="no-files-text" class="text-center text-gray-500">ยังไม่มีรูปภาพที่เลือก</p>
 
-                <!-- 4. ปุ่มอัปโหลด -->
+                <!-- ปุ่มอัปโหลด -->
                 <div class="mt-8">
                     <button id="upload-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg w-full transition duration-300 text-lg disabled:bg-gray-400" disabled>
                         อัปโหลด <span id="file-count">0</span> รูป
@@ -95,21 +102,11 @@
         // ===================================================================================
         // === การตั้งค่าที่สำคัญ (กรุณาแก้ไขค่าเหล่านี้) ===
         // ===================================================================================
-        // 1. ไปที่ Google Cloud Console: https://console.cloud.google.com/
-        // 2. สร้างโปรเจกต์ใหม่
-        // 3. ไปที่ "APIs & Services" -> "Credentials"
-        // 4. สร้าง "API Key" และนำมาใส่ที่ตัวแปร API_KEY
-        // 5. สร้าง "OAuth 2.0 Client ID"
-        //    - เลือก Application type เป็น "Web application"
-        //    - ใน "Authorized JavaScript origins" ให้ใส่ URL ที่คุณจะใช้ทดสอบแอปนี้
-        //      (สำหรับการทดสอบใน Canvas หรือ local อาจใช้ http://localhost หรือ http://127.0.0.1)
-        //    - คัดลอก "Client ID" มาใส่ที่ตัวแปร CLIENT_ID
-        // 6. ไปที่ "Library" และเปิดใช้งาน "Google Drive API"
-        // ===================================================================================
         const API_KEY = 'AIzaSyD0KqYgTxvosfaFWI4wky2-001WNGCfVDs'; // <--- ใส่ API Key ของคุณที่นี่
         const CLIENT_ID = '618267737889-kt57o8r6ca0uc2f78csl8sjta20bm5t3.apps.googleusercontent.com'; // <--- ใส่ Client ID ของคุณที่นี่
 
-        // รายชื่อโปรเจกต์ของคุณ (สามารถเพิ่ม/แก้ไขได้ตามต้องการ)
+        // รายชื่อโปรเจกต์เริ่มต้นของคุณ (สามารถเพิ่ม/แก้ไขได้ตามต้องการ)
+        // ผู้ใช้สามารถสร้างโปรเจกต์ใหม่ได้เองจากหน้าแอป
         const PROJECTS = [
             "โครงการ A - ก่อสร้างอาคาร",
             "โครงการ B - วางระบบไฟฟ้า",
@@ -133,7 +130,11 @@
         const authorizeButton = document.getElementById('authorize_button');
         const signoutButton = document.getElementById('signout_button');
         const userEmail = document.getElementById('user-email');
-        const projectSelect = document.getElementById('project-select');
+        
+        const projectInput = document.getElementById('project-input');
+        const projectList = document.getElementById('project-list');
+        const dateInput = document.getElementById('date-input');
+
         const fileInput = document.getElementById('file-input');
         const previewContainer = document.getElementById('preview-container');
         const noFilesText = document.getElementById('no-files-text');
@@ -209,6 +210,7 @@
             if (isSignedIn) {
                 authContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
+                initializeAppUI();
                 
                 try {
                     const profile = await gapi.client.request({
@@ -226,15 +228,21 @@
                 userEmail.textContent = '';
             }
         }
+        
+        // --- App UI and Logic ---
 
-        // --- App Logic ---
+        function initializeAppUI() {
+            // Set default date to today
+            dateInput.value = new Date().toISOString().slice(0, 10);
+            populateProjects();
+        }
 
         function populateProjects() {
+            projectList.innerHTML = '';
             PROJECTS.forEach(project => {
                 const option = document.createElement('option');
                 option.value = project;
-                option.textContent = project;
-                projectSelect.appendChild(option);
+                projectList.appendChild(option);
             });
         }
 
@@ -270,32 +278,42 @@
         function updateUploadButton() {
             const count = selectedFiles.length;
             fileCountSpan.textContent = count;
-            if (count > 0) {
+            const projectName = projectInput.value.trim();
+            const selectedDate = dateInput.value;
+
+            if (count > 0 && projectName && selectedDate) {
                 uploadButton.disabled = false;
             } else {
                 uploadButton.disabled = true;
             }
         }
 
+        // Add event listeners to check for button disable/enable state
+        projectInput.addEventListener('input', updateUploadButton);
+        dateInput.addEventListener('change', updateUploadButton);
+
         uploadButton.addEventListener('click', handleUpload);
 
         async function handleUpload() {
-            if (selectedFiles.length === 0) return;
+            const projectName = projectInput.value.trim();
+            const selectedDate = dateInput.value;
+
+            if (selectedFiles.length === 0 || !projectName || !selectedDate) {
+                showStatusModal('กรุณากรอกข้อมูลโปรเจกต์, วันที่, และเลือกไฟล์ก่อนอัปโหลด', true, true);
+                return;
+            }
 
             uploadButton.disabled = true;
             showStatusModal('กำลังเริ่มต้น...');
 
             try {
-                const projectName = projectSelect.value;
-                const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-
                 // 1. หาหรือสร้างโฟลเดอร์โปรเจกต์
                 showStatusModal(`กำลังหาโฟลเดอร์โปรเจกต์: ${projectName}`);
                 const projectFolderId = await getOrCreateFolder(projectName, 'root');
 
                 // 2. หาหรือสร้างโฟลเดอร์วันที่
-                showStatusModal(`กำลังหาโฟลเดอร์วันที่: ${today}`);
-                const dateFolderId = await getOrCreateFolder(today, projectFolderId);
+                showStatusModal(`กำลังหาโฟลเดอร์วันที่: ${selectedDate}`);
+                const dateFolderId = await getOrCreateFolder(selectedDate, projectFolderId);
                 
                 // 3. อัปโหลดไฟล์ทั้งหมด
                 for (let i = 0; i < selectedFiles.length; i++) {
@@ -308,15 +326,17 @@
                 // Reset UI
                 selectedFiles = [];
                 fileInput.value = '';
+                projectInput.value = '';
                 updatePreview();
                 updateUploadButton();
 
             } catch (error) {
                 console.error('Upload Error:', error);
-                const errorMessage = error.result ? error.result.error.message : error.message;
+                const errorMessage = error.result ? error.result.error.message : (error.message || 'Unknown error');
                 showStatusModal(`เกิดข้อผิดพลาด: ${errorMessage}`, true, true);
             } finally {
-                uploadButton.disabled = false;
+                // Re-enable based on current state
+                updateUploadButton();
             }
         }
 
@@ -417,14 +437,19 @@
 
         // --- Initial Setup ---
         window.onload = () => {
-            if (!API_KEY || API_KEY === 'YOUR_API_KEY' || !CLIENT_ID || CLIENT_ID === 'YOUR_CLIENT_ID') {
-                alert('กรุณาตั้งค่า API_KEY และ CLIENT_ID ในโค้ดก่อนใช้งาน');
+            if (!API_KEY || API_KEY.includes('YOUR_API_KEY') || !CLIENT_ID || CLIENT_ID.includes('YOUR_CLIENT_ID')) {
+                const userProvidedApiKey = 'AIzaSyD0KqYgTxvosfaFWI4wky2-001WNGCfVDs';
+                const userProvidedClientId = '618267737889-kt57o8r6ca0uc2f78csl8sjta20bm5t3.apps.googleusercontent.com';
+                if(API_KEY === userProvidedApiKey || CLIENT_ID === userProvidedClientId){
+                } else {
+                    alert('กรุณาตั้งค่า API_KEY และ CLIENT_ID ในโค้ดก่อนใช้งาน');
+                }
+
                 authorizeButton.disabled = true;
                 authorizeButton.textContent = 'กรุณาตั้งค่าก่อนใช้งาน';
                 authorizeButton.classList.add('bg-red-500', 'cursor-not-allowed');
             }
-            populateProjects();
-            updatePreview();
+             updatePreview();
         };
 
     </script>
