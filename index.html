@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>บันทึกรูปภาพหน้างานลง Drive</title>
+
+    <meta name="theme-color" content="#3498db"/>
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICAgIm5hbWUiOiAi4Liq4Li44LiI4Lih4Li54LiB4Lij4Liw4Liq4Liy4Lii4LiH4Liy4LiB4Li04Lib4LmM4Lie4Lii4LiH4LiB4Li44LiU4LiZ4Liy4LiB4LijIiwKICAgICJzaG9ydF9uYW1lIjogIuC4quC4suC4ouC4h+C4suC4geC4tOC5gOC4o+C4sOC4iOC4suC4iiIsCiAgICAiZGVzY3JpcHRpb24iOiAi4LmA4Liq4Lij4Li14Liq4Li14Liq4Li24LiH4Liy4Lio4Liy4Liq4Li44Liq4Liy4Lii4LiH4Liy4LiB4Li04Lib4LmM4Lie4Lii4LiH4LiB4Li44LiU4LiZ4Liy4LiB4Lij4Lib4LiI4Li5IEdvb2dsZSBEcml2ZSIsCiAgICAic3RhcnRfdXJsIjogIi4iLAogICAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgICAiYmFja2dyb3VuZF9jb2xvciI6ICIjZjNmM2YzIiwKICAgICJ0aGVtZV9jb2xvciI6ICIjMzQ5OGRiIiwKICAgICJpY29ucyI6IFsKICAgICAgICB7CiAgICAgICAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFDQUFBQUFnQ0FZQUFBQzd3bEhOQUFBQUJHWUVOVkJBQVlBQUFBL0FBQUE5QUFBPSIsCiAgICAgICAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIgogICAgICAgIH0sCiAgICAgICAgewogICAgICAgICAgICAic3JjIjogImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnZ0FBQUFOU1VoRVVnQUFBREFBQUFCR0NBWUFBREUyQ2dnYkFBQUFCR1lFTlZCQVNZQUFBQUEvQUFBQThBQUFBPSIsCiAgICAgICAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIgogICAgICAgIH0KICAgIF0KfQ==">
+    <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAFMSURBVHhe7cExAQAAAMKg9U9tCF8gAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAAB+6gEAAAAAAAAAAAAAAADgC3oCAAAAAAAAAMACPAEAAAAAAAAAAAAAAAD4qR8AAAAAAAAAAAAAAADAp3oAAAAAAAAAAAAAAADAp3oAAAAAAAAAAAAAAADAp3oAAAAAAAAAAAAAAADAp3oAAAAAAAAAAAAAAADAp3oAAAAAAAAAAAAAAAAAAPg2A2gUA35fD52UAAAAAElFTkSuQmCC">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -32,7 +38,6 @@
             <h1 class="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-2">บันทึกรูปภาพหน้างาน</h1>
             <p class="text-gray-500 text-center mb-6">อัปโหลดรูปภาพลง Google Drive</p>
             
-            <!-- ส่วนของการยืนยันตัวตน -->
             <div id="auth-container" class="text-center">
                 <p class="mb-4 text-gray-600">กรุณาลงชื่อเข้าใช้ด้วยบัญชี Google เพื่อเริ่มต้นใช้งาน</p>
                 <button id="authorize_button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg w-full transition duration-300">
@@ -40,47 +45,33 @@
                 </button>
             </div>
 
-            <!-- ส่วนของแอปพลิเคชันหลัก (ซ่อนไว้จนกว่าจะ login) -->
             <div id="app-container" class="hidden">
                 <div class="flex justify-between items-center mb-6">
                     <p id="user-email" class="text-sm text-gray-600 truncate"></p>
                     <button id="signout_button" class="text-sm text-red-500 hover:text-red-700 font-semibold">ออกจากระบบ</button>
                 </div>
 
-                <!-- 1. เลือก/สร้างโปรเจกต์ -->
                 <div class="mb-6">
-                    <label for="project-input" class="block text-gray-700 text-lg font-bold mb-2">1. เลือกหรือสร้างโปรเจกต์</label>
-                    <input type="text" id="project-input" list="project-list" class="block w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-gray-500" placeholder="พิมพ์เพื่อค้นหาหรือสร้างใหม่...">
-                    <datalist id="project-list">
-                        <!-- ตัวเลือกโปรเจกต์เก่าจะถูกเพิ่มที่นี่ -->
-                    </datalist>
+                    <label for="project-select" class="block text-gray-700 text-lg font-bold mb-2">1. เลือกโปรเจกต์</label>
+                    <select id="project-select" class="block w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-gray-500">
+                        </select>
                 </div>
 
-                <!-- 2. เลือกวันที่ -->
                 <div class="mb-6">
-                    <label for="date-input" class="block text-gray-700 text-lg font-bold mb-2">2. เลือกวันที่บันทึก</label>
-                    <input type="date" id="date-input" class="block w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-gray-500">
-                </div>
-
-                <!-- 3. เลือกรูปภาพ -->
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-lg font-bold mb-2">3. ถ่าย/เลือกรูปภาพ</label>
+                    <label class="block text-gray-700 text-lg font-bold mb-2">2. ถ่าย/เลือกรูปภาพ</label>
                     <label for="file-input" class="w-full flex items-center justify-center px-4 py-6 bg-white text-blue-500 rounded-lg shadow-md tracking-wide uppercase border border-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white transition duration-300">
                         <svg class="w-8 h-8 mr-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                             <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3v-4h2v4z" />
                         </svg>
                         <span class="text-base font-semibold">เลือกไฟล์ภาพ</span>
                     </label>
-                    <input type="file" id="file-input" class="hidden" accept="image/*" multiple>
+                    <input type="file" id="file-input" class="hidden" accept="image/*" multiple capture="environment">
                 </div>
 
-                <!-- แสดงตัวอย่างรูปภาพ -->
                 <div id="preview-container" class="mb-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    <!-- รูปตัวอย่างจะแสดงที่นี่ -->
-                </div>
-                <p id="no-files-text" class="text-center text-gray-500">ยังไม่มีรูปภาพที่เลือก</p>
+                    </div>
+                <p id="no-files-text" class="text-center text-gray-500 hidden">ยังไม่มีรูปภาพที่เลือก</p>
 
-                <!-- ปุ่มอัปโหลด -->
                 <div class="mt-8">
                     <button id="upload-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg w-full transition duration-300 text-lg disabled:bg-gray-400" disabled>
                         อัปโหลด <span id="file-count">0</span> รูป
@@ -89,7 +80,6 @@
             </div>
         </div>
 
-        <!-- Modal สำหรับแสดงสถานะ -->
         <div id="status-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
             <div class="bg-white rounded-lg p-8 text-center shadow-2xl">
                 <div class="loader mx-auto mb-4"></div>
@@ -102,11 +92,21 @@
         // ===================================================================================
         // === การตั้งค่าที่สำคัญ (กรุณาแก้ไขค่าเหล่านี้) ===
         // ===================================================================================
+        // 1. ไปที่ Google Cloud Console: https://console.cloud.google.com/
+        // 2. สร้างโปรเจกต์ใหม่
+        // 3. ไปที่ "APIs & Services" -> "Credentials"
+        // 4. สร้าง "API Key" และนำมาใส่ที่ตัวแปร API_KEY
+        // 5. สร้าง "OAuth 2.0 Client ID"
+        //    - เลือก Application type เป็น "Web application"
+        //    - ใน "Authorized JavaScript origins" ให้ใส่ URL ที่คุณจะใช้ทดสอบแอปนี้
+        //      (สำหรับการทดสอบใน Canvas หรือ local อาจใช้ http://localhost หรือ http://127.0.0.1)
+        //    - คัดลอก "Client ID" มาใส่ที่ตัวแปร CLIENT_ID
+        // 6. ไปที่ "Library" และเปิดใช้งาน "Google Drive API"
+        // ===================================================================================
         const API_KEY = 'AIzaSyD0KqYgTxvosfaFWI4wky2-001WNGCfVDs'; // <--- ใส่ API Key ของคุณที่นี่
         const CLIENT_ID = '618267737889-kt57o8r6ca0uc2f78csl8sjta20bm5t3.apps.googleusercontent.com'; // <--- ใส่ Client ID ของคุณที่นี่
 
-        // รายชื่อโปรเจกต์เริ่มต้นของคุณ (สามารถเพิ่ม/แก้ไขได้ตามต้องการ)
-        // ผู้ใช้สามารถสร้างโปรเจกต์ใหม่ได้เองจากหน้าแอป
+        // รายชื่อโปรเจกต์ของคุณ (สามารถเพิ่ม/แก้ไขได้ตามต้องการ)
         const PROJECTS = [
             "โครงการ A - ก่อสร้างอาคาร",
             "โครงการ B - วางระบบไฟฟ้า",
@@ -130,11 +130,7 @@
         const authorizeButton = document.getElementById('authorize_button');
         const signoutButton = document.getElementById('signout_button');
         const userEmail = document.getElementById('user-email');
-        
-        const projectInput = document.getElementById('project-input');
-        const projectList = document.getElementById('project-list');
-        const dateInput = document.getElementById('date-input');
-
+        const projectSelect = document.getElementById('project-select');
         const fileInput = document.getElementById('file-input');
         const previewContainer = document.getElementById('preview-container');
         const noFilesText = document.getElementById('no-files-text');
@@ -210,7 +206,6 @@
             if (isSignedIn) {
                 authContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
-                initializeAppUI();
                 
                 try {
                     const profile = await gapi.client.request({
@@ -228,21 +223,15 @@
                 userEmail.textContent = '';
             }
         }
-        
-        // --- App UI and Logic ---
 
-        function initializeAppUI() {
-            // Set default date to today
-            dateInput.value = new Date().toISOString().slice(0, 10);
-            populateProjects();
-        }
+        // --- App Logic ---
 
         function populateProjects() {
-            projectList.innerHTML = '';
             PROJECTS.forEach(project => {
                 const option = document.createElement('option');
                 option.value = project;
-                projectList.appendChild(option);
+                option.textContent = project;
+                projectSelect.appendChild(option);
             });
         }
 
@@ -278,42 +267,32 @@
         function updateUploadButton() {
             const count = selectedFiles.length;
             fileCountSpan.textContent = count;
-            const projectName = projectInput.value.trim();
-            const selectedDate = dateInput.value;
-
-            if (count > 0 && projectName && selectedDate) {
+            if (count > 0) {
                 uploadButton.disabled = false;
             } else {
                 uploadButton.disabled = true;
             }
         }
 
-        // Add event listeners to check for button disable/enable state
-        projectInput.addEventListener('input', updateUploadButton);
-        dateInput.addEventListener('change', updateUploadButton);
-
         uploadButton.addEventListener('click', handleUpload);
 
         async function handleUpload() {
-            const projectName = projectInput.value.trim();
-            const selectedDate = dateInput.value;
-
-            if (selectedFiles.length === 0 || !projectName || !selectedDate) {
-                showStatusModal('กรุณากรอกข้อมูลโปรเจกต์, วันที่, และเลือกไฟล์ก่อนอัปโหลด', true, true);
-                return;
-            }
+            if (selectedFiles.length === 0) return;
 
             uploadButton.disabled = true;
             showStatusModal('กำลังเริ่มต้น...');
 
             try {
+                const projectName = projectSelect.value;
+                const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
                 // 1. หาหรือสร้างโฟลเดอร์โปรเจกต์
                 showStatusModal(`กำลังหาโฟลเดอร์โปรเจกต์: ${projectName}`);
                 const projectFolderId = await getOrCreateFolder(projectName, 'root');
 
                 // 2. หาหรือสร้างโฟลเดอร์วันที่
-                showStatusModal(`กำลังหาโฟลเดอร์วันที่: ${selectedDate}`);
-                const dateFolderId = await getOrCreateFolder(selectedDate, projectFolderId);
+                showStatusModal(`กำลังหาโฟลเดอร์วันที่: ${today}`);
+                const dateFolderId = await getOrCreateFolder(today, projectFolderId);
                 
                 // 3. อัปโหลดไฟล์ทั้งหมด
                 for (let i = 0; i < selectedFiles.length; i++) {
@@ -326,17 +305,15 @@
                 // Reset UI
                 selectedFiles = [];
                 fileInput.value = '';
-                projectInput.value = '';
                 updatePreview();
                 updateUploadButton();
 
             } catch (error) {
                 console.error('Upload Error:', error);
-                const errorMessage = error.result ? error.result.error.message : (error.message || 'Unknown error');
+                const errorMessage = error.result ? error.result.error.message : error.message;
                 showStatusModal(`เกิดข้อผิดพลาด: ${errorMessage}`, true, true);
             } finally {
-                // Re-enable based on current state
-                updateUploadButton();
+                uploadButton.disabled = false;
             }
         }
 
@@ -430,34 +407,95 @@
                     statusText.classList.remove('text-red-500');
                 }, 3000);
             } else {
-                 loader.classList.remove('hidden');
-                 statusText.classList.remove('text-red-500');
+                loader.classList.remove('hidden');
+                statusText.classList.remove('text-red-500');
             }
         }
 
         // --- Initial Setup ---
         window.onload = () => {
-            if (!API_KEY || API_KEY.includes('YOUR_API_KEY') || !CLIENT_ID || CLIENT_ID.includes('YOUR_CLIENT_ID')) {
-                const userProvidedApiKey = 'AIzaSyD0KqYgTxvosfaFWI4wky2-001WNGCfVDs';
-                const userProvidedClientId = '618267737889-kt57o8r6ca0uc2f78csl8sjta20bm5t3.apps.googleusercontent.com';
-                if(API_KEY === userProvidedApiKey || CLIENT_ID === userProvidedClientId){
-                } else {
-                    alert('กรุณาตั้งค่า API_KEY และ CLIENT_ID ในโค้ดก่อนใช้งาน');
-                }
-
+            if (!API_KEY || API_KEY.startsWith('AIza') === false || !CLIENT_ID || CLIENT_ID.endsWith('.apps.googleusercontent.com') === false) {
+                alert('กรุณาตั้งค่า API_KEY และ CLIENT_ID ในโค้ดก่อนใช้งาน');
                 authorizeButton.disabled = true;
                 authorizeButton.textContent = 'กรุณาตั้งค่าก่อนใช้งาน';
                 authorizeButton.classList.add('bg-red-500', 'cursor-not-allowed');
             }
-             updatePreview();
+            populateProjects();
+            updatePreview();
         };
-
     </script>
 
-    <!-- Google API Scripts -->
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    
+    <script>
+        const registerServiceWorker = async () => {
+            if ('serviceWorker' in navigator) {
+                try {
+                    // Define the Service Worker code as a string
+                    const swCode = `
+                        const CACHE_NAME = 'drive-uploader-cache-v1';
+                        const URLS_TO_CACHE = [
+                            './' // Cache the main HTML file
+                        ];
+
+                        self.addEventListener('install', event => {
+                            event.waitUntil(
+                                caches.open(CACHE_NAME)
+                                    .then(cache => {
+                                        console.log('Opened cache');
+                                        return cache.addAll(URLS_TO_CACHE);
+                                    })
+                            );
+                        });
+
+                        self.addEventListener('fetch', event => {
+                            event.respondWith(
+                                caches.match(event.request)
+                                    .then(response => {
+                                        // Cache hit - return response
+                                        if (response) {
+                                            return response;
+                                        }
+                                        return fetch(event.request);
+                                    })
+                            );
+                        });
+
+                        self.addEventListener('activate', event => {
+                            const cacheWhitelist = [CACHE_NAME];
+                            event.waitUntil(
+                                caches.keys().then(cacheNames => {
+                                    return Promise.all(
+                                        cacheNames.map(cacheName => {
+                                            if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                                return caches.delete(cacheName);
+                                            }
+                                        })
+                                    );
+                                })
+                            );
+                        });
+                    `;
+                    
+                    // Create a Blob from the string
+                    const blob = new Blob([swCode], { type: 'application/javascript' });
+                    
+                    // Create an object URL from the Blob
+                    const swUrl = URL.createObjectURL(blob);
+
+                    // Register the Service Worker using the object URL
+                    const registration = await navigator.serviceWorker.register(swUrl);
+                    
+                    console.log('Service Worker registered with scope:', registration.scope);
+                } catch (error) {
+                    console.error('Service Worker registration failed:', error);
+                }
+            }
+        };
+
+        // Register the service worker after the page has loaded
+        window.addEventListener('load', registerServiceWorker);
+    </script>
 </body>
 </html>
-
-
