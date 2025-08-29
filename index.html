@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บันทึกรูปภาพหน้างานลง Drive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            scroll-behavior: smooth;
+        }
+        /* Spinner Animation */
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 5px solid #3b82f6; /* blue-500 */
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Modal Fade-in Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .modal-fade {
+            animation: fadeIn 0.3s ease-out;
+        }
+        /* Custom scrollbar for preview */
+        #preview-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        #preview-container::-webkit-scrollbar-track {
+            background: #f1f5f9; /* slate-100 */
+        }
+        #preview-container::-webkit-scrollbar-thumb {
+            background: #94a3b8; /* slate-400 */
+            border-radius: 10px;
+        }
+        #preview-container::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* slate-500 */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="container mx-auto max-w-2xl w-full">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 md:p-10 transform transition-all duration-500">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-500 mb-2">บันทึกรูปภาพหน้างาน</h1>
+                <p class="text-slate-500">อัปโหลดรูปภาพสำคัญของคุณไปยัง Google Drive ได้อย่างง่ายดาย</p>
+            </div>
+            
+            <div id="auth-container" class="text-center">
+                <p class="mb-6 text-slate-600">กรุณาลงชื่อเข้าใช้ด้วยบัญชี Google เพื่อเริ่มต้นใช้งาน</p>
+                <button id="authorize_button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg w-full flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-blue-500/50 disabled:bg-slate-400 disabled:shadow-none disabled:cursor-not-allowed">
+                    <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><path id="a" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></defs><clipPath id="b"><use xlink:href="#a" overflow="visible"/></clipPath><path clip-path="url(#b)" fill="#FBBC05" d="M0 37V11l17 13z"/><path clip-path="url(#b)" fill="#EA4335" d="M0 11l17 13 7-6.1L48 14V0H0z"/><path clip-path="url(#b)" fill="#34A853" d="M0 37l30-23.5 7.9 1L48 0v48H0z"/><path clip-path="url(#b)" fill="#4285F4" d="M48 48L17 24l-4-3 35-10z"/></svg>
+                    <span>ลงชื่อเข้าใช้ด้วย Google</span>
+                </button>
+            </div>
+
+            <div id="app-container" class="hidden">
+                <div class="flex justify-between items-center mb-8 bg-slate-50 p-3 rounded-lg">
+                    <p id="user-email" class="text-sm text-slate-700 font-medium truncate"></p>
+                    <button id="signout_button" class="text-sm text-red-500 hover:text-red-700 font-semibold transition-colors duration-200">ออกจากระบบ</button>
+                </div>
+
+                <div class="mb-6">
+                    <label for="project-select" class="block text-slate-700 text-lg font-bold mb-2">1. เลือกโปรเจกต์</label>
+                    <select id="project-select" class="block w-full bg-slate-100 border-2 border-slate-200 text-slate-700 py-3 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition duration-300">
+                        </select>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-slate-700 text-lg font-bold mb-2">2. ถ่าย/เลือกรูปภาพ</label>
+                    <label for="file-input" class="w-full flex flex-col items-center justify-center px-4 py-10 bg-slate-50 text-blue-500 rounded-lg shadow-sm tracking-wide border-2 border-dashed border-slate-300 cursor-pointer hover:bg-blue-50 hover:border-blue-500 transition duration-300">
+                        <svg class="w-12 h-12 mb-2" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                            <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4 4-4-4h3v-4h2v4z" />
+                        </svg>
+                        <span class="text-base font-semibold">เลือกไฟล์ภาพ หรือลากมาวางที่นี่</span>
+                        <span class="text-xs text-slate-500 mt-1">สามารถเลือกได้หลายไฟล์</span>
+                    </label>
+                    <input type="file" id="file-input" class="hidden" accept="image/*" multiple capture="environment">
+                </div>
+
+                <div id="preview-section" class="mb-6 hidden">
+                    <label class="block text-slate-700 text-lg font-bold mb-2">3. รูปภาพที่เลือก</label>
+                    <div id="preview-container" class="max-h-72 overflow-y-auto p-4 bg-slate-50 rounded-lg grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        </div>
+                </div>
+                <p id="no-files-text" class="text-center text-slate-500 p-8 hidden">ยังไม่มีรูปภาพที่เลือก</p>
+                
+
+                <div class="mt-10">
+                    <button id="upload-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg w-full transition-all duration-300 text-lg disabled:bg-slate-400 disabled:cursor-not-allowed shadow-lg hover:shadow-green-500/50 disabled:shadow-none flex items-center justify-center gap-3" disabled>
+                        <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                        <span>อัปโหลด <span id="file-count">0</span> รูป</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="status-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50 p-4 modal-fade">
+        <div class="bg-white rounded-2xl p-8 text-center shadow-2xl w-full max-w-sm">
+            <div id="loader-icon" class="loader mx-auto mb-6"></div>
+            <div id="success-icon" class="hidden mx-auto mb-6 w-16 h-16 text-green-500">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div id="error-icon" class="hidden mx-auto mb-6 w-16 h-16 text-red-500">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+            </div>
+            <p id="status-text" class="text-lg font-semibold text-slate-700"></p>
+        </div>
+    </div>
+
+    <script>
+        // ===================================================================================
+        // === การตั้งค่าที่สำคัญ (กรุณาแก้ไขค่าเหล่านี้) ===
+        // ===================================================================================
+        // 1. ไปที่ Google Cloud Console: https://console.cloud.google.com/
+        // 2. สร้างโปรเจกต์ใหม่
+        // 3. ไปที่ "APIs & Services" -> "Credentials"
+        // 4. สร้าง "API Key" และนำมาใส่ที่ตัวแปร API_KEY
+        // 5. สร้าง "OAuth 2.0 Client ID"
+        //    - เลือก Application type เป็น "Web application"
+        //    - ใน "Authorized JavaScript origins" ให้ใส่ URL ที่คุณจะใช้ทดสอบแอปนี้
+        //      (สำหรับการทดสอบในเครื่อง อาจใช้ http://localhost หรือ http://127.0.0.1 ตามด้วย port)
+        //    - คัดลอก "Client ID" มาใส่ที่ตัวแปร CLIENT_ID
+        // 6. ไปที่ "Library" และเปิดใช้งาน "Google Drive API"
+        // ===================================================================================
+        const API_KEY = AIzaSyD0KqYgTxvosfaFWI4wky2-001WNGCfVDs ; // <--- ใส่ API Key ของคุณที่นี่
+        const CLIENT_ID = 618267737889-kt57o8r6ca0uc2f78csl8sjta20bm5t3.apps.googleusercontent.com; // <--- ใส่ Client ID ของคุณที่นี่
+
+        // รายชื่อโปรเจกต์ของคุณ (สามารถเพิ่ม/แก้ไขได้ตามต้องการ)
+        const PROJECTS = [
+            "โครงการ A - ก่อสร้างอาคาร",
+            "โครงการ B - วางระบบไฟฟ้า",
+            "โครงการ C - ตกแต่งภายใน",
+            "โครงการ D - ปรับปรุงภูมิทัศน์",
+            "โครงการ E - งานถนน"
+        ];
+
+        // ===================================================================================
+        // === โค้ดหลักของแอปพลิเคชัน (ไม่ต้องแก้ไข) ===
+        // ===================================================================================
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const authorizeButton = document.getElementById('authorize_button');
+        const signoutButton = document.getElementById('signout_button');
+        const userEmail = document.getElementById('user-email');
+        const projectSelect = document.getElementById('project-select');
+        const fileInput = document.getElementById('file-input');
+        const previewSection = document.getElementById('preview-section');
+        const previewContainer = document.getElementById('preview-container');
+        const noFilesText = document.getElementById('no-files-text');
+        const uploadButton = document.getElementById('upload-button');
+        const fileCountSpan = document.getElementById('file-count');
+        
+        // Modal elements
+        const statusModal = document.getElementById('status-modal');
+        const statusText = document.getElementById('status-text');
+        const loaderIcon = document.getElementById('loader-icon');
+        const successIcon = document.getElementById('success-icon');
+        const errorIcon = document.getElementById('error-icon');
+
+        let selectedFiles = [];
+
+        // --- Initialization ---
+        
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                authorizeButton.disabled = false;
+            }
+        }
+
+        // --- Authentication ---
+        
+        authorizeButton.onclick = handleAuthClick;
+        signoutButton.onclick = handleSignoutClick;
+
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    throw (resp);
+                }
+                await updateSigninStatus(true);
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        function handleSignoutClick() {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token, () => {
+                    gapi.client.setToken('');
+                    updateSigninStatus(false);
+                });
+            }
+        }
+
+        async function updateSigninStatus(isSignedIn) {
+            if (isSignedIn) {
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                
+                try {
+                    const profile = await gapi.client.request({
+                        path: 'https://www.googleapis.com/oauth2/v3/userinfo'
+                    });
+                    userEmail.textContent = profile.result.email;
+                } catch (e) {
+                    console.error("Error fetching user profile", e);
+                    userEmail.textContent = "Welcome!";
+                }
+                
+            } else {
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+                userEmail.textContent = '';
+                // Reset UI on sign out
+                selectedFiles = [];
+                updatePreview();
+                updateUploadButton();
+            }
+        }
+
+        // --- App Logic ---
+
+        function populateProjects() {
+            PROJECTS.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project;
+                option.textContent = project;
+                projectSelect.appendChild(option);
+            });
+        }
+
+        fileInput.addEventListener('change', (event) => {
+            const newFiles = Array.from(event.target.files);
+            selectedFiles = [...selectedFiles, ...newFiles];
+            updatePreview();
+            updateUploadButton();
+        });
+
+        function updatePreview() {
+            previewContainer.innerHTML = '';
+            if (selectedFiles.length === 0) {
+                previewSection.classList.add('hidden');
+                noFilesText.classList.remove('hidden');
+                return;
+            }
+            previewSection.classList.remove('hidden');
+            noFilesText.classList.add('hidden');
+
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const div = document.createElement('div');
+                    div.className = 'relative w-full aspect-square group';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" alt="${file.name}" class="object-cover w-full h-full rounded-lg shadow-md">
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 rounded-lg"></div>
+                        <p class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white text-xs p-1.5 truncate rounded-b-lg">${file.name}</p>
+                        <button data-index="${index}" class="remove-btn absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform hover:scale-110">&times;</button>
+                    `;
+                    previewContainer.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        previewContainer.addEventListener('click', function (event) {
+            if (event.target.classList.contains('remove-btn')) {
+                const indexToRemove = parseInt(event.target.getAttribute('data-index'), 10);
+                selectedFiles.splice(indexToRemove, 1);
+                updatePreview();
+                updateUploadButton();
+            }
+        });
+
+
+        function updateUploadButton() {
+            const count = selectedFiles.length;
+            fileCountSpan.textContent = count;
+            uploadButton.disabled = count === 0;
+        }
+
+        uploadButton.addEventListener('click', handleUpload);
+
+        async function handleUpload() {
+            if (selectedFiles.length === 0) return;
+
+            uploadButton.disabled = true;
+            showStatusModal('กำลังเริ่มต้น...', 'loading');
+
+            try {
+                const projectName = projectSelect.value;
+                const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+                // 1. Find or create project folder
+                showStatusModal(`กำลังค้นหาโฟลเดอร์: ${projectName}`, 'loading');
+                const projectFolderId = await getOrCreateFolder(projectName, 'root');
+
+                // 2. Find or create date folder
+                showStatusModal(`กำลังสร้างโฟลเดอร์สำหรับวันที่: ${today}`, 'loading');
+                const dateFolderId = await getOrCreateFolder(today, projectFolderId);
+                
+                // 3. Upload all files
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const file = selectedFiles[i];
+                    showStatusModal(`กำลังอัปโหลด ${i + 1}/${selectedFiles.length}: ${file.name}`, 'loading');
+                    await uploadFile(file, dateFolderId);
+                }
+
+                showStatusModal('อัปโหลดเสร็จสมบูรณ์!', 'success');
+                // Reset UI
+                selectedFiles = [];
+                fileInput.value = '';
+                updatePreview();
+                updateUploadButton();
+
+            } catch (error) {
+                console.error('Upload Error:', error);
+                const errorMessage = error.result ? error.result.error.message : error.message;
+                showStatusModal(`เกิดข้อผิดพลาด: ${errorMessage}`, 'error');
+            } finally {
+                // Keep button enabled even after error to allow retry
+                 if (selectedFiles.length > 0) {
+                    uploadButton.disabled = false;
+                 }
+            }
+        }
+
+        async function getOrCreateFolder(name, parentId) {
+            // Search for the folder first
+            const query = `mimeType='application/vnd.google-apps.folder' and name='${name}' and '${parentId}' in parents and trashed=false`;
+            const response = await gapi.client.drive.files.list({
+                q: query,
+                fields: 'files(id, name)',
+                spaces: 'drive',
+            });
+
+            if (response.result.files.length > 0) {
+                return response.result.files[0].id;
+            } else {
+                // Create the folder if not found
+                const fileMetadata = {
+                    'name': name,
+                    'mimeType': 'application/vnd.google-apps.folder',
+                    'parents': [parentId]
+                };
+                const createResponse = await gapi.client.drive.files.create({
+                    resource: fileMetadata,
+                    fields: 'id'
+                });
+                return createResponse.result.id;
+            }
+        }
+
+        function uploadFile(file, parentId) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsArrayBuffer(file);
+                reader.onload = async () => {
+                    const fileContent = reader.result;
+                    const boundary = '-------314159265358979323846';
+                    const delimiter = "\r\n--" + boundary + "\r\n";
+                    const close_delim = "\r\n--" + boundary + "--";
+
+                    const metadata = {
+                        'name': file.name,
+                        'mimeType': file.type,
+                        'parents': [parentId]
+                    };
+
+                    // Using ArrayBuffer to Base64 conversion
+                    const base64Data = btoa(String.fromCharCode.apply(null, new Uint8Array(fileContent)));
+                    
+                    const multipartRequestBody =
+                        delimiter +
+                        'Content-Type: application/json\r\n\r\n' +
+                        JSON.stringify(metadata) +
+                        delimiter +
+                        'Content-Type: ' + file.type + '\r\n' +
+                        'Content-Transfer-Encoding: base64\r\n' +
+                        '\r\n' +
+                        base64Data +
+                        close_delim;
+
+                    try {
+                        const request = await gapi.client.request({
+                            'path': '/upload/drive/v3/files',
+                            'method': 'POST',
+                            'params': {'uploadType': 'multipart'},
+                            'headers': {
+                                'Content-Type': 'multipart/related; boundary="' + boundary + '"'
+                            },
+                            'body': multipartRequestBody
+                        });
+                        resolve(request);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+            });
+        }
+
+        function showStatusModal(message, state = 'loading') { // states: 'loading', 'success', 'error'
+            statusText.textContent = message;
+            statusModal.classList.remove('hidden');
+
+            loaderIcon.classList.add('hidden');
+            successIcon.classList.add('hidden');
+            errorIcon.classList.add('hidden');
+
+            let autoHide = false;
+
+            switch (state) {
+                case 'success':
+                    successIcon.classList.remove('hidden');
+                    statusText.className = 'text-lg font-semibold text-green-600';
+                    autoHide = true;
+                    break;
+                case 'error':
+                    errorIcon.classList.remove('hidden');
+                    statusText.className = 'text-lg font-semibold text-red-600';
+                    autoHide = true;
+                    break;
+                case 'loading':
+                default:
+                    loaderIcon.classList.remove('hidden');
+                    statusText.className = 'text-lg font-semibold text-slate-700';
+                    break;
+            }
+
+            if (autoHide) {
+                setTimeout(() => {
+                    statusModal.classList.add('hidden');
+                }, 3500);
+            }
+        }
+
+        // --- Initial Setup ---
+        window.onload = () => {
+            if (!API_KEY || API_KEY === 'YOUR_API_KEY' || !CLIENT_ID || CLIENT_ID === 'YOUR_CLIENT_ID') {
+                document.getElementById('auth-container').innerHTML = `
+                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg" role="alert">
+                      <p class="font-bold">!! ตั้งค่าไม่สมบูรณ์ !!</p>
+                      <p>กรุณาตั้งค่า API_KEY และ CLIENT_ID ในโค้ดก่อนเริ่มต้นใช้งาน</p>
+                    </div>
+                `;
+            }
+            populateProjects();
+            updatePreview();
+        };
+
+    </script>
+
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+</body>
+</html>
