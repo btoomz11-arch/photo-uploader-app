@@ -137,7 +137,7 @@
                 discoveryDocs: [DISCOVERY_DOC],
             });
             gapiInited = true;
-            maybeEnableButtons();
+            attemptSilentSignIn(); // <--- เปลี่ยนแปลง
         }
 
         function gisLoaded() {
@@ -147,12 +147,22 @@
                 callback: '', // defined later
             });
             gisInited = true;
-            maybeEnableButtons();
+            attemptSilentSignIn(); // <--- เปลี่ยนแปลง
         }
 
-        function maybeEnableButtons() {
+        // <--- เปลี่ยนแปลง: ฟังก์ชันนี้จะพยายาม sign in แบบเงียบๆ
+        function attemptSilentSignIn() {
             if (gapiInited && gisInited) {
-                authorizeButton.disabled = false;
+                tokenClient.callback = async (resp) => {
+                    if (resp.error !== undefined) {
+                        // ไม่สามารถ sign in แบบเงียบๆ ได้, แสดงปุ่มให้ผู้ใช้กดเอง
+                        authorizeButton.disabled = false;
+                        return;
+                    }
+                    // sign in สำเร็จ
+                    await updateSigninStatus(true);
+                };
+                tokenClient.requestAccessToken({prompt: ''}); // prompt: '' คือการพยายามแบบเงียบๆ
             }
         }
 
@@ -162,18 +172,15 @@
         signoutButton.onclick = handleSignoutClick;
 
         function handleAuthClick() {
+            // <--- เปลี่ยนแปลง: ทำให้ callback ของการกดปุ่มชัดเจนขึ้น
             tokenClient.callback = async (resp) => {
                 if (resp.error !== undefined) {
-                    throw (resp);
+                    throw (resp); // หากผู้ใช้ปิดหน้าต่าง consent, ให้โยน error
                 }
                 await updateSigninStatus(true);
             };
-
-            if (gapi.client.getToken() === null) {
-                tokenClient.requestAccessToken({prompt: 'consent'});
-            } else {
-                tokenClient.requestAccessToken({prompt: ''});
-            }
+            // เมื่อผู้ใช้กดปุ่มเอง ให้แสดงหน้าจอขออนุญาตเสมอ
+            tokenClient.requestAccessToken({prompt: 'consent'});
         }
 
         function handleSignoutClick() {
@@ -212,16 +219,14 @@
         // --- Project Management ---
         function getSavedProjects() {
             const projectsJSON = localStorage.getItem('userProjects');
-            // ถ้าไม่มีข้อมูล ให้คืนค่าเป็น array ว่าง
             return projectsJSON ? JSON.parse(projectsJSON) : [];
         }
 
         function saveNewProject(projectName) {
             let projects = getSavedProjects();
-            // ตรวจสอบว่าโปรเจกต์ซ้ำหรือไม่ (เพื่อความปลอดภัย)
             if (!projects.includes(projectName)) {
                 projects.push(projectName);
-                projects.sort(); // จัดเรียงตามตัวอักษร
+                projects.sort();
                 localStorage.setItem('userProjects', JSON.stringify(projects));
             }
         }
@@ -229,13 +234,12 @@
         // --- App UI and Logic ---
 
         function initializeAppUI() {
-            // Set default date to today
             dateInput.value = new Date().toISOString().slice(0, 10);
             populateProjects();
         }
 
         function populateProjects() {
-            const projects = getSavedProjects(); // ดึงข้อมูลโปรเจกต์ที่บันทึกไว้
+            const projects = getSavedProjects();
             projectList.innerHTML = '';
             projects.forEach(project => {
                 const option = document.createElement('option');
@@ -286,10 +290,8 @@
             }
         }
 
-        // Add event listeners to check for button disable/enable state
         projectInput.addEventListener('input', updateUploadButton);
         dateInput.addEventListener('change', updateUploadButton);
-
         uploadButton.addEventListener('click', handleUpload);
 
         async function handleUpload() {
@@ -305,46 +307,38 @@
             showStatusModal('กำลังเริ่มต้น...');
 
             try {
-                // 1. หาหรือสร้างโฟลเดอร์โปรเจกต์
                 showStatusModal(`กำลังหาโฟลเดอร์โปรเจกต์: ${projectName}`);
                 const projectFolderId = await getOrCreateFolder(projectName, 'root');
 
-                // 2. หาหรือสร้างโฟลเดอร์วันที่
                 showStatusModal(`กำลังหาโฟลเดอร์วันที่: ${selectedDate}`);
                 const dateFolderId = await getOrCreateFolder(selectedDate, projectFolderId);
                 
-                // 3. อัปโหลดไฟล์ทั้งหมด
                 for (let i = 0; i < selectedFiles.length; i++) {
                     const file = selectedFiles[i];
                     showStatusModal(`กำลังอัปโหลดรูปที่ ${i + 1} / ${selectedFiles.length}: ${file.name}`);
                     await uploadFile(file, dateFolderId);
                 }
                 
-                // *** บันทึกชื่อโปรเจกต์หลังอัปโหลดสำเร็จ ***
                 saveNewProject(projectName);
-
                 showStatusModal('อัปโหลดเสร็จสมบูรณ์!', true);
                 
-                // Reset UI
                 selectedFiles = [];
                 fileInput.value = '';
                 projectInput.value = '';
                 updatePreview();
                 updateUploadButton();
-                populateProjects(); // อัปเดตรายการโปรเจกต์ใน datalist
+                populateProjects();
 
             } catch (error) {
                 console.error('Upload Error:', error);
                 const errorMessage = error.result ? error.result.error.message : (error.message || 'Unknown error');
                 showStatusModal(`เกิดข้อผิดพลาด: ${errorMessage}`, true, true);
             } finally {
-                // Re-enable based on current state
                 updateUploadButton();
             }
         }
 
         async function getOrCreateFolder(name, parentId) {
-            // Search for the folder first
             const query = `mimeType='application/vnd.google-apps.folder' and name='${name}' and '${parentId}' in parents and trashed=false`;
             const response = await gapi.client.drive.files.list({
                 q: query,
@@ -355,7 +349,6 @@
             if (response.result.files.length > 0) {
                 return response.result.files[0].id;
             } else {
-                // Create the folder if not found
                 const fileMetadata = {
                     'name': name,
                     'mimeType': 'application/vnd.google-apps.folder',
