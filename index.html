@@ -39,7 +39,12 @@
             <h1 class="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-2">บันทึกรูปภาพหน้างาน</h1>
             <p class="text-gray-500 text-center mb-6">อัปโหลดรูปภาพลง Google Drive</p>
 
-            <div id="auth-container" class="text-center">
+            <div id="initial-loader" class="text-center p-8">
+                <div class="loader mx-auto"></div>
+                <p class="mt-4 text-gray-500">กำลังตรวจสอบสถานะ...</p>
+            </div>
+
+            <div id="auth-container" class="text-center hidden">
                 <p class="mb-4 text-gray-600">กรุณาลงชื่อเข้าใช้ด้วยบัญชี Google เพื่อเริ่มต้นใช้งาน</p>
                 <button id="authorize_button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg w-full transition duration-300">
                     ลงชื่อเข้าใช้ Google
@@ -94,8 +99,8 @@
     </div>
 
     <script>
-        const API_KEY = 'AIzaSyD0KqYgTxvosfaFWI4wky2-001WNGCfVDs';
-        const CLIENT_ID = '618267737889-kt57o8r6ca0uc2f78csl8sjta20bm5t3.apps.googleusercontent.com';
+        const API_KEY = 'YOUR_API_KEY'; // Please replace with your actual API Key
+        const CLIENT_ID = 'YOUR_CLIENT_ID'; // Please replace with your actual Client ID
 
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
@@ -138,6 +143,7 @@
                 gapi.client.setToken(JSON.parse(storedToken));
                 await updateSigninStatus(true);
             } else {
+                updateSigninStatus(false);
                 attemptSilentSignIn();
             }
         }
@@ -182,6 +188,10 @@
         async function handleTokenResponse(resp) {
             if (resp.error !== undefined) {
                 console.log("Silent sign-in failed or user not signed in.");
+                // Ensure auth screen is shown if silent sign-in fails and no token is stored
+                if (!localStorage.getItem('google_token')) {
+                    updateSigninStatus(false);
+                }
                 return;
             }
             localStorage.setItem('google_token', JSON.stringify(gapi.client.getToken()));
@@ -189,6 +199,8 @@
         }
 
         async function updateSigninStatus(isSignedIn) {
+            document.getElementById('initial-loader').classList.add('hidden');
+
             if (isSignedIn) {
                 authContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
@@ -200,7 +212,6 @@
                     userEmail.textContent = profile.result.email;
                 } catch (e) {
                     console.error("Error fetching user profile", e);
-                    // If fetching profile fails (e.g., expired token), sign out
                     if (e.result && e.result.error && e.result.error.status === 'UNAUTHENTICATED') {
                         handleSignoutClick();
                     } else {
@@ -208,8 +219,8 @@
                     }
                 }
             } else {
-                authContainer.classList.remove('hidden');
                 appContainer.classList.add('hidden');
+                authContainer.classList.remove('hidden');
                 userEmail.textContent = '';
             }
         }
