@@ -184,6 +184,7 @@
             await updateSigninStatus(true);
         }
 
+        // ========== THIS IS THE MODIFIED FUNCTION ==========
         async function updateSigninStatus(isSignedIn) {
             document.getElementById('initial-loader').classList.add('hidden');
 
@@ -192,17 +193,24 @@
                 appContainer.classList.remove('hidden');
                 initializeAppUI();
                 try {
+                    // Try to request user info to check if the token is still valid
                     const profile = await gapi.client.request({
                         path: 'https://www.googleapis.com/oauth2/v3/userinfo'
                     });
                     userEmail.textContent = profile.result.email;
                 } catch (e) {
-                    console.error("Error fetching user profile", e);
+                    console.error("Error fetching user profile, possibly expired token", e);
+                    // If there's an error because the token is expired (UNAUTHENTICATED)
                     if (e.result && e.result.error && e.result.error.status === 'UNAUTHENTICATED') {
-                        // Token is invalid or expired, force sign out
-                        handleSignoutClick();
+                        console.log("Token expired or invalid. Attempting silent refresh...");
+                        // Try to get a new token silently without showing a popup
+                        tokenClient.requestAccessToken({ prompt: 'none' });
+                        // handleTokenResponse will be called on success, which will update the status again
                     } else {
-                         userEmail.textContent = "Welcome!";
+                        // For other errors not related to authentication
+                        userEmail.textContent = "Could not load profile";
+                        appContainer.classList.add('hidden');
+                        authContainer.classList.remove('hidden');
                     }
                 }
             } else {
@@ -211,6 +219,7 @@
                 userEmail.textContent = '';
             }
         }
+        // =================================================
 
         function getSavedProjects() {
             const projectsJSON = localStorage.getItem('userProjects');
