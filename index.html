@@ -32,7 +32,6 @@
             <h1 class="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-2">บันทึกรูปภาพหน้างาน</h1>
             <p class="text-gray-500 text-center mb-6">อัปโหลดรูปภาพลง Google Drive</p>
             
-            <!-- ส่วนของการยืนยันตัวตน -->
             <div id="auth-container" class="text-center">
                 <p class="mb-4 text-gray-600">กรุณาลงชื่อเข้าใช้ด้วยบัญชี Google เพื่อเริ่มต้นใช้งาน</p>
                 <button id="authorize_button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg w-full transition duration-300">
@@ -40,29 +39,24 @@
                 </button>
             </div>
 
-            <!-- ส่วนของแอปพลิเคชันหลัก (ซ่อนไว้จนกว่าจะ login) -->
             <div id="app-container" class="hidden">
                 <div class="flex justify-between items-center mb-6">
                     <p id="user-email" class="text-sm text-gray-600 truncate"></p>
                     <button id="signout_button" class="text-sm text-red-500 hover:text-red-700 font-semibold">ออกจากระบบ</button>
                 </div>
 
-                <!-- 1. เลือก/สร้างโปรเจกต์ -->
                 <div class="mb-6">
                     <label for="project-input" class="block text-gray-700 text-lg font-bold mb-2">1. เลือกหรือสร้างโปรเจกต์</label>
                     <input type="text" id="project-input" list="project-list" class="block w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-gray-500" placeholder="พิมพ์เพื่อค้นหาหรือสร้างใหม่...">
                     <datalist id="project-list">
-                        <!-- ตัวเลือกโปรเจกต์เก่าจะถูกเพิ่มที่นี่ -->
-                    </datalist>
+                        </datalist>
                 </div>
 
-                <!-- 2. เลือกวันที่ -->
                 <div class="mb-6">
                     <label for="date-input" class="block text-gray-700 text-lg font-bold mb-2">2. เลือกวันที่บันทึก</label>
                     <input type="date" id="date-input" class="block w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-gray-500">
                 </div>
 
-                <!-- 3. เลือกรูปภาพ -->
                 <div class="mb-6">
                     <label class="block text-gray-700 text-lg font-bold mb-2">3. ถ่าย/เลือกรูปภาพ</label>
                     <label for="file-input" class="w-full flex items-center justify-center px-4 py-6 bg-white text-blue-500 rounded-lg shadow-md tracking-wide uppercase border border-blue-500 cursor-pointer hover:bg-blue-500 hover:text-white transition duration-300">
@@ -74,13 +68,10 @@
                     <input type="file" id="file-input" class="hidden" accept="image/*" multiple>
                 </div>
 
-                <!-- แสดงตัวอย่างรูปภาพ -->
                 <div id="preview-container" class="mb-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    <!-- รูปตัวอย่างจะแสดงที่นี่ -->
-                </div>
+                    </div>
                 <p id="no-files-text" class="text-center text-gray-500">ยังไม่มีรูปภาพที่เลือก</p>
 
-                <!-- ปุ่มอัปโหลด -->
                 <div class="mt-8">
                     <button id="upload-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg w-full transition duration-300 text-lg disabled:bg-gray-400" disabled>
                         อัปโหลด <span id="file-count">0</span> รูป
@@ -89,7 +80,6 @@
             </div>
         </div>
 
-        <!-- Modal สำหรับแสดงสถานะ -->
         <div id="status-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
             <div class="bg-white rounded-lg p-8 text-center shadow-2xl">
                 <div class="loader mx-auto mb-4"></div>
@@ -104,16 +94,6 @@
         // ===================================================================================
         const API_KEY = 'AIzaSyD0KqYgTxvosfaFWI4wky2-001WNGCfVDs'; // <--- ใส่ API Key ของคุณที่นี่
         const CLIENT_ID = '618267737889-kt57o8r6ca0uc2f78csl8sjta20bm5t3.apps.googleusercontent.com'; // <--- ใส่ Client ID ของคุณที่นี่
-
-        // รายชื่อโปรเจกต์เริ่มต้นของคุณ (สามารถเพิ่ม/แก้ไขได้ตามต้องการ)
-        // ผู้ใช้สามารถสร้างโปรเจกต์ใหม่ได้เองจากหน้าแอป
-        const PROJECTS = [
-            "โครงการ A - ก่อสร้างอาคาร",
-            "โครงการ B - วางระบบไฟฟ้า",
-            "โครงการ C - ตกแต่งภายใน",
-            "โครงการ D - ปรับปรุงภูมิทัศน์",
-            "โครงการ E - งานถนน"
-        ];
 
         // ===================================================================================
         // === โค้ดหลักของแอปพลิเคชัน (ไม่ต้องแก้ไข) ===
@@ -229,6 +209,23 @@
             }
         }
         
+        // --- Project Management ---
+        function getSavedProjects() {
+            const projectsJSON = localStorage.getItem('userProjects');
+            // ถ้าไม่มีข้อมูล ให้คืนค่าเป็น array ว่าง
+            return projectsJSON ? JSON.parse(projectsJSON) : [];
+        }
+
+        function saveNewProject(projectName) {
+            let projects = getSavedProjects();
+            // ตรวจสอบว่าโปรเจกต์ซ้ำหรือไม่ (เพื่อความปลอดภัย)
+            if (!projects.includes(projectName)) {
+                projects.push(projectName);
+                projects.sort(); // จัดเรียงตามตัวอักษร
+                localStorage.setItem('userProjects', JSON.stringify(projects));
+            }
+        }
+        
         // --- App UI and Logic ---
 
         function initializeAppUI() {
@@ -238,8 +235,9 @@
         }
 
         function populateProjects() {
+            const projects = getSavedProjects(); // ดึงข้อมูลโปรเจกต์ที่บันทึกไว้
             projectList.innerHTML = '';
-            PROJECTS.forEach(project => {
+            projects.forEach(project => {
                 const option = document.createElement('option');
                 option.value = project;
                 projectList.appendChild(option);
@@ -321,14 +319,19 @@
                     showStatusModal(`กำลังอัปโหลดรูปที่ ${i + 1} / ${selectedFiles.length}: ${file.name}`);
                     await uploadFile(file, dateFolderId);
                 }
+                
+                // *** บันทึกชื่อโปรเจกต์หลังอัปโหลดสำเร็จ ***
+                saveNewProject(projectName);
 
                 showStatusModal('อัปโหลดเสร็จสมบูรณ์!', true);
+                
                 // Reset UI
                 selectedFiles = [];
                 fileInput.value = '';
                 projectInput.value = '';
                 updatePreview();
                 updateUploadButton();
+                populateProjects(); // อัปเดตรายการโปรเจกต์ใน datalist
 
             } catch (error) {
                 console.error('Upload Error:', error);
@@ -454,9 +457,7 @@
 
     </script>
 
-    <!-- Google API Scripts -->
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
-
