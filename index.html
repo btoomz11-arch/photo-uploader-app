@@ -18,7 +18,6 @@
         body {
             font-family: 'Sarabun', sans-serif;
         }
-        /* Spinner Animation */
         .loader {
             border: 5px solid #f3f3f3;
             border-radius: 50%;
@@ -95,17 +94,13 @@
     </div>
 
     <script>
-        // ===================================================================================
-        // === IMPORTANT CONFIGURATION (Values are now included) ===
-        // ===================================================================================
         const API_KEY = 'AIzaSyD0KqYgTxvosfaFWI4wky2-001WNGCfVDs';
         const CLIENT_ID = '618267737889-kt57o8r6ca0uc2f78csl8sjta20bm5t3.apps.googleusercontent.com';
 
-        // ===================================================================================
-        // === Main Application Code (No need to edit below this line) ===
-        // ===================================================================================
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+        // ... (ส่วน JavaScript อื่นๆ ทั้งหมดยังเหมือนเดิม) ...
 
         let tokenClient;
         let gapiInited = false;
@@ -129,7 +124,6 @@
 
         let selectedFiles = [];
 
-        // --- Initialization ---
         function gapiLoaded() {
             gapi.load('client', initializeGapiClient);
         }
@@ -147,7 +141,7 @@
             tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: CLIENT_ID,
                 scope: SCOPES,
-                callback: '', // defined later
+                callback: '',
             });
             gisInited = true;
             attemptSilentSignIn();
@@ -166,7 +160,6 @@
             }
         }
 
-        // --- Authentication ---
         authorizeButton.onclick = handleAuthClick;
         signoutButton.onclick = handleSignoutClick;
 
@@ -211,7 +204,6 @@
             }
         }
 
-        // --- Project Management ---
         function getSavedProjects() {
             const projectsJSON = localStorage.getItem('userProjects');
             return projectsJSON ? JSON.parse(projectsJSON) : [];
@@ -226,7 +218,6 @@
             }
         }
 
-        // --- App UI and Logic ---
         function initializeAppUI() {
             dateInput.value = new Date().toISOString().slice(0, 10);
             populateProjects();
@@ -358,15 +349,12 @@
                     const boundary = '-------314159265358979323846';
                     const delimiter = "\r\n--" + boundary + "\r\n";
                     const close_delim = "\r\n--" + boundary + "--";
-
                     const metadata = {
                         'name': file.name,
                         'mimeType': file.type,
                         'parents': [parentId]
                     };
-                    
                     const base64Data = btoa(new Uint8Array(reader.result).reduce((data, byte) => data + String.fromCharCode(byte), ''));
-                    
                     const multipartRequestBody =
                         delimiter +
                         'Content-Type: application/json\r\n\r\n' +
@@ -376,7 +364,6 @@
                         'Content-Transfer-Encoding: base64\r\n\r\n' +
                         base64Data +
                         close_delim;
-
                     try {
                         const request = await gapi.client.request({
                             'path': '/upload/drive/v3/files',
@@ -411,7 +398,6 @@
             }
         }
 
-        // --- Initial Setup ---
         window.onload = () => {
             if (!API_KEY || !CLIENT_ID) {
                 alert('API_KEY หรือ CLIENT_ID ไม่ได้ถูกตั้งค่า');
@@ -425,50 +411,16 @@
 
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-    
-    <script>
-        // Dynamically create and register Manifest
-        const manifest = {
-            "name": "บันทึกรูปภาพหน้างาน",
-            "short_name": "รูปหน้างาน",
-            "start_url": ".",
-            "display": "standalone",
-            "background_color": "#f3f4f6",
-            "theme_color": "#3b82f6",
-            "description": "แอปพลิเคชันสำหรับอัปโหลดรูปภาพหน้างานลง Google Drive",
-            "icons": [
-                { "src": "icon-192x192.png", "sizes": "192x192", "type": "image/png" },
-                { "src": "icon-512x512.png", "sizes": "512x512", "type": "image/png" }
-            ]
-        };
-        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-        const manifestURL = URL.createObjectURL(manifestBlob);
-        document.querySelector('link[rel="manifest"]').setAttribute('href', manifestURL);
 
-        // Service Worker Registration
-        const swContent = `
-            const CACHE_NAME = 'site-cache-v1';
-            const urlsToCache = ['/', 'index.html'];
-            self.addEventListener('install', event => {
-                event.waitUntil(
-                    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
-                );
-            });
-            self.addEventListener('fetch', event => {
-                event.respondWith(
-                    caches.match(event.request).then(response => response || fetch(event.request))
-                );
-            });
-        `;
+    <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                const swBlob = new Blob([swContent], { type: 'application/javascript' });
-                const swURL = URL.createObjectURL(swBlob);
-                navigator.serviceWorker.register(swURL)
+                navigator.serviceWorker.register('/sw.js')
                     .then(reg => console.log('ServiceWorker registration successful.'))
                     .catch(err => console.log('ServiceWorker registration failed: ', err));
             });
         }
     </script>
+
 </body>
 </html>
