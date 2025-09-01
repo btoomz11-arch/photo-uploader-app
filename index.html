@@ -100,8 +100,6 @@
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
-        // ... (ส่วน JavaScript อื่นๆ ทั้งหมดยังเหมือนเดิม) ...
-
         let tokenClient;
         let gapiInited = false;
         let gisInited = false;
@@ -134,28 +132,31 @@
                 discoveryDocs: [DISCOVERY_DOC],
             });
             gapiInited = true;
-            attemptSilentSignIn();
+
+            const storedToken = localStorage.getItem('google_token');
+            if (storedToken) {
+                gapi.client.setToken(JSON.parse(storedToken));
+                await updateSigninStatus(true);
+            } else {
+                attemptSilentSignIn();
+            }
         }
 
         function gisLoaded() {
             tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: CLIENT_ID,
                 scope: SCOPES,
-                callback: '',
+                callback: handleTokenResponse,
             });
             gisInited = true;
-            attemptSilentSignIn();
+            
+            if (gapiInited && gapi.client.getToken() === null) {
+                 attemptSilentSignIn();
+            }
         }
 
         function attemptSilentSignIn() {
             if (gapiInited && gisInited) {
-                tokenClient.callback = async (resp) => {
-                    if (resp.error !== undefined) {
-                        authorizeButton.disabled = false;
-                        return;
-                    }
-                    await updateSigninStatus(true);
-                };
                 tokenClient.requestAccessToken({prompt: ''});
             }
         }
@@ -164,12 +165,6 @@
         signoutButton.onclick = handleSignoutClick;
 
         function handleAuthClick() {
-            tokenClient.callback = async (resp) => {
-                if (resp.error !== undefined) {
-                    throw (resp);
-                }
-                await updateSigninStatus(true);
-            };
             tokenClient.requestAccessToken({prompt: 'consent'});
         }
 
@@ -178,9 +173,19 @@
             if (token !== null) {
                 google.accounts.oauth2.revoke(token.access_token, () => {
                     gapi.client.setToken('');
+                    localStorage.removeItem('google_token');
                     updateSigninStatus(false);
                 });
             }
+        }
+        
+        async function handleTokenResponse(resp) {
+            if (resp.error !== undefined) {
+                console.log("Silent sign-in failed or user not signed in.");
+                return;
+            }
+            localStorage.setItem('google_token', JSON.stringify(gapi.client.getToken()));
+            await updateSigninStatus(true);
         }
 
         async function updateSigninStatus(isSignedIn) {
@@ -195,7 +200,12 @@
                     userEmail.textContent = profile.result.email;
                 } catch (e) {
                     console.error("Error fetching user profile", e);
-                    userEmail.textContent = "Welcome!";
+                    // If fetching profile fails (e.g., expired token), sign out
+                    if (e.result && e.result.error && e.result.error.status === 'UNAUTHENTICATED') {
+                        handleSignoutClick();
+                    } else {
+                         userEmail.textContent = "Welcome!";
+                    }
                 }
             } else {
                 authContainer.classList.remove('hidden');
