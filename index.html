@@ -144,7 +144,6 @@
                 await updateSigninStatus(true);
             } else {
                 updateSigninStatus(false);
-                attemptSilentSignIn();
             }
         }
 
@@ -155,16 +154,6 @@
                 callback: handleTokenResponse,
             });
             gisInited = true;
-            
-            if (gapiInited && gapi.client.getToken() === null) {
-                 attemptSilentSignIn();
-            }
-        }
-
-        function attemptSilentSignIn() {
-            if (gapiInited && gisInited) {
-                tokenClient.requestAccessToken({prompt: ''});
-            }
         }
 
         authorizeButton.onclick = handleAuthClick;
@@ -187,11 +176,8 @@
         
         async function handleTokenResponse(resp) {
             if (resp.error !== undefined) {
-                console.log("Silent sign-in failed or user not signed in.");
-                // Ensure auth screen is shown if silent sign-in fails and no token is stored
-                if (!localStorage.getItem('google_token')) {
-                    updateSigninStatus(false);
-                }
+                console.log("Token response error:", resp.error);
+                updateSigninStatus(false);
                 return;
             }
             localStorage.setItem('google_token', JSON.stringify(gapi.client.getToken()));
@@ -213,6 +199,7 @@
                 } catch (e) {
                     console.error("Error fetching user profile", e);
                     if (e.result && e.result.error && e.result.error.status === 'UNAUTHENTICATED') {
+                        // Token is invalid or expired, force sign out
                         handleSignoutClick();
                     } else {
                          userEmail.textContent = "Welcome!";
@@ -420,7 +407,7 @@
         }
 
         window.onload = () => {
-            if (!API_KEY || !CLIENT_ID) {
+            if (!API_KEY.startsWith('AIza') || !CLIENT_ID.endsWith('apps.googleusercontent.com')) {
                 alert('API_KEY หรือ CLIENT_ID ไม่ได้ถูกตั้งค่า');
                 authorizeButton.disabled = true;
                 authorizeButton.textContent = 'การตั้งค่าไม่สมบูรณ์';
