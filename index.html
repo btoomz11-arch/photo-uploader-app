@@ -58,9 +58,16 @@
                 </div>
 
                 <div class="mb-6">
-                    <label for="project-input" class="block text-gray-700 text-lg font-bold mb-2">1. เลือกหรือสร้างโปรเจกต์</label>
-                    <input type="text" id="project-input" list="project-list" class="block w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-gray-500" placeholder="พิมพ์เพื่อค้นหาหรือสร้างใหม่...">
-                    <datalist id="project-list"></datalist>
+                    <label for="project-select" class="block text-gray-700 text-lg font-bold mb-2">1. เลือกหรือสร้างโปรเจกต์</label>
+                    <div class="flex gap-2">
+                        <select id="project-select" class="block w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-gray-500">
+                            <option value="">-- เลือกโปรเจกต์ --</option>
+                        </select>
+                        <button id="new-project-button" type="button" title="สร้างโปรเจกต์ใหม่"
+                            class="flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-5 rounded-lg transition duration-300 text-2xl leading-none">
+                            +
+                        </button>
+                    </div>
                 </div>
 
                 <div class="mb-6">
@@ -123,8 +130,8 @@
         const authorizeButton = document.getElementById('authorize_button');
         const signoutButton = document.getElementById('signout_button');
         const userEmail = document.getElementById('user-email');
-        const projectInput = document.getElementById('project-input');
-        const projectList = document.getElementById('project-list');
+        const projectSelect = document.getElementById('project-select');
+        const newProjectButton = document.getElementById('new-project-button');
         const dateInput = document.getElementById('date-input');
         const fileInput = document.getElementById('file-input');
         const previewContainer = document.getElementById('preview-container');
@@ -344,17 +351,29 @@
         function initializeAppUI() {
             dateInput.value = new Date().toISOString().slice(0, 10);
             populateProjects();
+            updateUploadButton();
         }
 
-        function populateProjects() {
+        function populateProjects(selectValue) {
             const projects = getSavedProjects();
-            projectList.innerHTML = '';
+            projectSelect.innerHTML = '<option value="">-- เลือกโปรเจกต์ --</option>';
             projects.forEach(project => {
                 const option = document.createElement('option');
                 option.value = project;
-                projectList.appendChild(option);
+                option.textContent = project;
+                if (project === selectValue) option.selected = true;
+                projectSelect.appendChild(option);
             });
         }
+
+        newProjectButton.addEventListener('click', () => {
+            const name = prompt('ชื่อโปรเจกต์ใหม่:');
+            if (!name || !name.trim()) return;
+            const trimmed = name.trim();
+            saveNewProject(trimmed);
+            populateProjects(trimmed);
+            updateUploadButton();
+        });
 
         // ─────────────────────────────────────────────
         //  File / upload logic (unchanged)
@@ -390,19 +409,19 @@
         function updateUploadButton() {
             const count = selectedFiles.length;
             fileCountSpan.textContent = count;
-            const projectName = projectInput.value.trim();
+            const projectName = projectSelect.value;
             const selectedDate = dateInput.value;
             uploadButton.disabled = !(count > 0 && projectName && selectedDate);
         }
 
-        projectInput.addEventListener('input', updateUploadButton);
+        projectSelect.addEventListener('change', updateUploadButton);
         dateInput.addEventListener('change', updateUploadButton);
         uploadButton.addEventListener('click', handleUpload);
 
         let uploadRetryPending = false; // guard against infinite retry loop
 
         async function handleUpload() {
-            const projectName = projectInput.value.trim();
+            const projectName = projectSelect.value;
             const selectedDate = dateInput.value;
 
             if (selectedFiles.length === 0 || !projectName || !selectedDate) {
@@ -432,7 +451,7 @@
 
                 selectedFiles = [];
                 fileInput.value = '';
-                projectInput.value = '';
+                projectSelect.value = '';
                 updatePreview();
                 updateUploadButton();
                 populateProjects();
