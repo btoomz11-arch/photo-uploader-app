@@ -334,44 +334,65 @@
         // ─────────────────────────────────────────────
         //  Project helpers (unchanged)
         // ─────────────────────────────────────────────
-        function getSavedProjects() {
-            const projectsJSON = localStorage.getItem('userProjects');
-            return projectsJSON ? JSON.parse(projectsJSON) : [];
+        function initializeAppUI() {
+            dateInput.value = new Date().toISOString().slice(0, 10);
+            loadProjectsFromDrive();
         }
 
-        function saveNewProject(projectName) {
-            let projects = getSavedProjects();
-            if (!projects.includes(projectName)) {
-                projects.push(projectName);
-                projects.sort();
-                localStorage.setItem('userProjects', JSON.stringify(projects));
+        // Load project folders from Drive root (shared across all devices)
+        async function loadProjectsFromDrive(selectValue) {
+            projectSelect.innerHTML = '<option value="">-- กำลังโหลด... --</option>';
+            projectSelect.disabled = true;
+            try {
+                const response = await gapi.client.drive.files.list({
+                    q: "mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false",
+                    fields: 'files(id, name)',
+                    orderBy: 'name',
+                    spaces: 'drive',
+                    pageSize: 200,
+                });
+                const folders = response.result.files || [];
+                projectSelect.innerHTML = '<option value="">-- เลือกโปรเจกต์ --</option>';
+                folders.forEach(folder => {
+                    const option = document.createElement('option');
+                    option.value = folder.name;
+                    option.textContent = folder.name;
+                    if (folder.name === selectValue) option.selected = true;
+                    projectSelect.appendChild(option);
+                });
+            } catch (e) {
+                console.error('loadProjectsFromDrive error:', e);
+                projectSelect.innerHTML = '<option value="">-- โหลดไม่ได้ --</option>';
+            } finally {
+                projectSelect.disabled = false;
+                updateUploadButton();
             }
         }
 
-        function initializeAppUI() {
-            dateInput.value = new Date().toISOString().slice(0, 10);
-            populateProjects();
-            updateUploadButton();
-        }
-
-        function populateProjects(selectValue) {
-            const projects = getSavedProjects();
-            projectSelect.innerHTML = '<option value="">-- เลือกโปรเจกต์ --</option>';
-            projects.forEach(project => {
-                const option = document.createElement('option');
-                option.value = project;
-                option.textContent = project;
-                if (project === selectValue) option.selected = true;
-                projectSelect.appendChild(option);
-            });
-        }
-
-        newProjectButton.addEventListener('click', () => {
+        newProjectButton.addEventListener('click', async () => {
             const name = prompt('ชื่อโปรเจกต์ใหม่:');
             if (!name || !name.trim()) return;
             const trimmed = name.trim();
-            saveNewProject(trimmed);
-            populateProjects(trimmed);
+            // Reload from Drive so the new folder (created during upload) appears,
+            // or just add it to the dropdown optimistically — Drive deduplicates on query.
+            // We add it immediately so UX feels instant, then reload to sync.
+            const exists = Array.from(projectSelect.options).some(o => o.value === trimmed);
+            if (!exists) {
+                const option = document.createElement('option');
+                option.value = trimmed;
+                option.textContent = trimmed;
+                // Insert alphabetically
+                let inserted = false;
+                for (let i = 1; i < projectSelect.options.length; i++) {
+                    if (projectSelect.options[i].text.localeCompare(trimmed, 'th') > 0) {
+                        projectSelect.insertBefore(option, projectSelect.options[i]);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) projectSelect.appendChild(option);
+            }
+            projectSelect.value = trimmed;
             updateUploadButton();
         });
 
@@ -445,16 +466,13 @@
                     await uploadFile(file, dateFolderId);
                 }
 
-                saveNewProject(projectName);
                 showStatusModal('อัปโหลดเสร็จสมบูรณ์!', true);
                 uploadRetryPending = false;
 
                 selectedFiles = [];
                 fileInput.value = '';
-                projectSelect.value = '';
                 updatePreview();
-                updateUploadButton();
-                populateProjects();
+                await loadProjectsFromDrive();
 
             } catch (error) {
                 console.error('Upload Error:', error);
