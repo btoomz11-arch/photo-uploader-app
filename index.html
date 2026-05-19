@@ -182,13 +182,15 @@
         function scheduleTokenRefresh(token) {
             if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
 
-            // expires_in comes from Google as seconds; we stored it at the time we received it,
-            // so use expires_at if we saved it, otherwise fallback to 3600 s.
             const expiresInMs = token.expires_at
                 ? token.expires_at - Date.now()
                 : (parseInt(token.expires_in, 10) || 3600) * 1000;
 
-            const refreshInMs = Math.max(expiresInMs - TOKEN_REFRESH_BUFFER_MS, 0);
+            // If already expired (negative) → refresh after a short delay (1 s)
+            // so that tokenClient has time to finish initialising via gisLoaded().
+            const refreshInMs = expiresInMs <= TOKEN_REFRESH_BUFFER_MS
+                ? 1000
+                : expiresInMs - TOKEN_REFRESH_BUFFER_MS;
 
             tokenRefreshTimer = setTimeout(() => {
                 console.log('Proactive silent token refresh...');
@@ -200,6 +202,13 @@
         function requestSilentToken(onSuccess) {
             if (onSuccess) afterRefreshCallbacks.push(onSuccess);
             if (silentRefreshPending) return; // already in-flight
+
+            // If GIS hasn't finished loading yet, wait 500 ms and retry
+            if (!tokenClient) {
+                setTimeout(() => requestSilentToken(), 500);
+                return;
+            }
+
             silentRefreshPending = true;
             tokenClient.requestAccessToken({ prompt: 'none' });
         }
@@ -246,9 +255,10 @@
         //  Auth UI
         // ─────────────────────────────────────────────
         authorizeButton.onclick = () => {
-            // Interactive login: show account chooser only on first login
-            const hasToken = !!localStorage.getItem('google_token');
-            tokenClient.requestAccessToken({ prompt: hasToken ? 'none' : 'consent' });
+            // Always use 'select_account' for interactive login so the user can
+            // pick their account even if a stored (possibly expired) token exists.
+            // Silent refresh is handled separately via requestSilentToken().
+            tokenClient.requestAccessToken({ prompt: 'select_account' });
         };
 
         signoutButton.onclick = handleSignoutClick;
@@ -260,10 +270,12 @@
                 google.accounts.oauth2.revoke(token.access_token, () => {
                     gapi.client.setToken('');
                     localStorage.removeItem('google_token');
+                    localStorage.removeItem('user_email');
                     updateSigninStatus(false);
                 });
             } else {
                 localStorage.removeItem('google_token');
+                localStorage.removeItem('user_email');
                 updateSigninStatus(false);
             }
         }
@@ -386,6 +398,8 @@
         dateInput.addEventListener('change', updateUploadButton);
         uploadButton.addEventListener('click', handleUpload);
 
+        let uploadRetryPending = false; // guard against infinite retry loop
+
         async function handleUpload() {
             const projectName = projectInput.value.trim();
             const selectedDate = dateInput.value;
@@ -413,6 +427,7 @@
 
                 saveNewProject(projectName);
                 showStatusModal('อัปโหลดเสร็จสมบูรณ์!', true);
+                uploadRetryPending = false;
 
                 selectedFiles = [];
                 fileInput.value = '';
@@ -428,14 +443,16 @@
                 const isAuthError = error.result && error.result.error &&
                     (error.result.error.status === 'UNAUTHENTICATED' || error.result.error.code === 401);
 
-                if (isAuthError) {
+                if (isAuthError && !uploadRetryPending) {
+                    uploadRetryPending = true;
                     showStatusModal('กำลังต่ออายุ session... กรุณารอสักครู่');
-                    requestSilentToken(async () => {
-                        // Retry upload after token refresh
+                    requestSilentToken(() => {
+                        uploadRetryPending = false;
                         uploadButton.disabled = false;
                         handleUpload();
                     });
                 } else {
+                    uploadRetryPending = false;
                     const errorMessage = error.result ? error.result.error.message : (error.message || 'Unknown error');
                     showStatusModal(`เกิดข้อผิดพลาด: ${errorMessage}`, true, true);
                 }
