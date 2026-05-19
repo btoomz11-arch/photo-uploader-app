@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="รูปหน้างาน">
-    <link rel="apple-touch-icon" href="icon-192x192.png">
+    <link class="apple-touch-icon" href="icon-192x192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
@@ -110,7 +110,9 @@
         const CLIENT_ID = '161694207918-a739s1l6ceqn1cvvu2jtegqpl8hdsnhb.apps.googleusercontent.com';
 
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
-        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+        
+        // [จุดสำคัญแก้ไข] เพิ่มขอบเขตสิทธิ์ metadata.readonly เพื่อเปิดการมองเห็นไฟล์ข้ามเครื่อง
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly';
 
         // ── Token TTL: refresh 5 min before expiry (default token lasts 3600 s) ──
         const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;   // 5 minutes
@@ -339,7 +341,7 @@
             loadProjectsFromDrive();
         }
 
-        // Load project folders from Drive root (shared across all devices)
+        // Load project folders
         async function loadProjectsFromDrive(selectValue) {
             projectSelect.innerHTML = '<option value="">-- กำลังโหลด... --</option>';
             projectSelect.disabled = true;
@@ -373,9 +375,7 @@
             const name = prompt('ชื่อโปรเจกต์ใหม่:');
             if (!name || !name.trim()) return;
             const trimmed = name.trim();
-            // Reload from Drive so the new folder (created during upload) appears,
-            // or just add it to the dropdown optimistically — Drive deduplicates on query.
-            // We add it immediately so UX feels instant, then reload to sync.
+            
             const exists = Array.from(projectSelect.options).some(o => o.value === trimmed);
             if (!exists) {
                 const option = document.createElement('option');
@@ -477,7 +477,6 @@
             } catch (error) {
                 console.error('Upload Error:', error);
 
-                // If upload failed due to expired token, refresh silently and retry once
                 const isAuthError = error.result && error.result.error &&
                     (error.result.error.status === 'UNAUTHENTICATED' || error.result.error.code === 401);
 
@@ -494,8 +493,7 @@
                     const errorMessage = error.result ? error.result.error.message : (error.message || 'Unknown error');
                     showStatusModal(`เกิดข้อผิดพลาด: ${errorMessage}`, true, true);
                 }
-            } fileInput {
-                // Don't re-enable the button if we're mid-retry (waiting for token refresh)
+            } finally {
                 if (!uploadRetryPending) {
                     updateUploadButton();
                 }
@@ -503,13 +501,11 @@
         }
 
         /**
-         * ฟังก์ชันตรวจสอบและดึง ID โฟลเดอร์เดิม (ป้องกันการสร้างซ้ำข้ามอุปกรณ์)
+         * ฟังก์ชันตรวจสอบและดึง ID โฟลเดอร์เดิม (ตรวจหาได้ข้ามเครื่องอย่างแม่นยำด้วย Scope ใหม่)
          */
         async function getOrCreateFolder(name, parentId) {
-            // ตัดช่องว่างหน้าและหลังชื่อเพื่อความแม่นยำในการเปรียบเทียบชื่อตรงกัน
             const cleanedName = name.trim(); 
             
-            // ค้นหาโฟลเดอร์ที่มีอยู่แล้วในระบบปลายทาง
             const query = `mimeType='application/vnd.google-apps.folder' and name='${cleanedName}' and '${parentId}' in parents and trashed=false`;
             const response = await gapi.client.drive.files.list({
                 q: query,
@@ -517,13 +513,10 @@
                 spaces: 'drive',
             });
 
-            // ตรวจสอบผลลัพธ์ว่าเคยมีอยู่แล้วหรือไม่
             if (response.result.files && response.result.files.length > 0) {
-                console.log(`พบโฟลเดอร์เดิมชื่อ "${cleanedName}" (ตรวจพบ: ${response.result.files.length} โฟลเดอร์) จะใช้โฟลเดอร์แรกเพื่อยุบรวมไฟล์เข้าด้วยกัน`);
-                // หากพบโฟลเดอร์ชื่อนี้แล้ว ไม่ว่าจะสร้างจากเครื่องใด ให้ดึง ID แรกไปใช้งานเลย ไม่สร้างใหม่
+                console.log(`พบโฟลเดอร์เดิมชื่อ "${cleanedName}" จะใช้โฟลเดอร์แรกเพื่อยุบรวมไฟล์เข้าด้วยกัน`);
                 return response.result.files[0].id;
             } else {
-                // หากไม่พบเลยในระบบ จึงค่อยสั่งสร้างโฟลเดอร์ใหม่
                 console.log(`ไม่พบโฟลเดอร์เดิมในระบบ กำลังสร้างโฟลเดอร์ใหม่ชื่อ: "${cleanedName}"`);
                 const fileMetadata = {
                     'name': cleanedName,
