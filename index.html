@@ -99,8 +99,8 @@
     </div>
 
     <script>
-        const API_KEY = 'YOUR_API_KEY'; // Please replace with your actual API Key
-        const CLIENT_ID = 'YOUR_CLIENT_ID'; // Please replace with your actual Client ID
+        const API_KEY = 'AIzaSyBeW7_dC9AJjXDE2bWP9Svc1XRYH-ISIuY';
+        const CLIENT_ID = '161694207918-a739s1l6ceqn1cvvu2jtegqpl8hdsnhb.apps.googleusercontent.com';
 
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
@@ -204,6 +204,7 @@
             if (silentRefreshPending) return; // already in-flight
 
             // If GIS hasn't finished loading yet, wait 500 ms and retry
+            // (callbacks are already queued in afterRefreshCallbacks above)
             if (!tokenClient) {
                 setTimeout(() => requestSilentToken(), 500);
                 return;
@@ -457,7 +458,10 @@
                     showStatusModal(`เกิดข้อผิดพลาด: ${errorMessage}`, true, true);
                 }
             } finally {
-                updateUploadButton();
+                // Don't re-enable the button if we're mid-retry (waiting for token refresh)
+                if (!uploadRetryPending) {
+                    updateUploadButton();
+                }
             }
         }
 
