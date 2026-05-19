@@ -332,7 +332,7 @@
         }
 
         // ─────────────────────────────────────────────
-        //  Project helpers (unchanged)
+        //  Project helpers
         // ─────────────────────────────────────────────
         function initializeAppUI() {
             dateInput.value = new Date().toISOString().slice(0, 10);
@@ -397,7 +397,7 @@
         });
 
         // ─────────────────────────────────────────────
-        //  File / upload logic (unchanged)
+        //  File / upload logic
         // ─────────────────────────────────────────────
         fileInput.addEventListener('change', (event) => {
             selectedFiles = Array.from(event.target.files);
@@ -494,7 +494,7 @@
                     const errorMessage = error.result ? error.result.error.message : (error.message || 'Unknown error');
                     showStatusModal(`เกิดข้อผิดพลาด: ${errorMessage}`, true, true);
                 }
-            } finally {
+            } fileInput {
                 // Don't re-enable the button if we're mid-retry (waiting for token refresh)
                 if (!uploadRetryPending) {
                     updateUploadButton();
@@ -502,19 +502,31 @@
             }
         }
 
+        /**
+         * ฟังก์ชันตรวจสอบและดึง ID โฟลเดอร์เดิม (ป้องกันการสร้างซ้ำข้ามอุปกรณ์)
+         */
         async function getOrCreateFolder(name, parentId) {
-            const query = `mimeType='application/vnd.google-apps.folder' and name='${name}' and '${parentId}' in parents and trashed=false`;
+            // ตัดช่องว่างหน้าและหลังชื่อเพื่อความแม่นยำในการเปรียบเทียบชื่อตรงกัน
+            const cleanedName = name.trim(); 
+            
+            // ค้นหาโฟลเดอร์ที่มีอยู่แล้วในระบบปลายทาง
+            const query = `mimeType='application/vnd.google-apps.folder' and name='${cleanedName}' and '${parentId}' in parents and trashed=false`;
             const response = await gapi.client.drive.files.list({
                 q: query,
                 fields: 'files(id, name)',
                 spaces: 'drive',
             });
 
-            if (response.result.files.length > 0) {
+            // ตรวจสอบผลลัพธ์ว่าเคยมีอยู่แล้วหรือไม่
+            if (response.result.files && response.result.files.length > 0) {
+                console.log(`พบโฟลเดอร์เดิมชื่อ "${cleanedName}" (ตรวจพบ: ${response.result.files.length} โฟลเดอร์) จะใช้โฟลเดอร์แรกเพื่อยุบรวมไฟล์เข้าด้วยกัน`);
+                // หากพบโฟลเดอร์ชื่อนี้แล้ว ไม่ว่าจะสร้างจากเครื่องใด ให้ดึง ID แรกไปใช้งานเลย ไม่สร้างใหม่
                 return response.result.files[0].id;
             } else {
+                // หากไม่พบเลยในระบบ จึงค่อยสั่งสร้างโฟลเดอร์ใหม่
+                console.log(`ไม่พบโฟลเดอร์เดิมในระบบ กำลังสร้างโฟลเดอร์ใหม่ชื่อ: "${cleanedName}"`);
                 const fileMetadata = {
-                    'name': name,
+                    'name': cleanedName,
                     'mimeType': 'application/vnd.google-apps.folder',
                     'parents': [parentId]
                 };
