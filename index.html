@@ -105,9 +105,18 @@
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
+        // ── Token TTL: refresh 5 min before expiry (default token lasts 3600 s) ──
+        const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;   // 5 minutes
+        let tokenRefreshTimer = null;
+
         let tokenClient;
         let gapiInited = false;
         let gisInited = false;
+
+        // Track whether a silent-refresh is in-flight so we don't double-fire
+        let silentRefreshPending = false;
+        // Callback queue: functions waiting for a fresh token
+        let afterRefreshCallbacks = [];
 
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
@@ -127,6 +136,9 @@
 
         let selectedFiles = [];
 
+        // ─────────────────────────────────────────────
+        //  GAPI / GIS init
+        // ─────────────────────────────────────────────
         function gapiLoaded() {
             gapi.load('client', initializeGapiClient);
         }
@@ -140,7 +152,10 @@
 
             const storedToken = localStorage.getItem('google_token');
             if (storedToken) {
-                gapi.client.setToken(JSON.parse(storedToken));
+                const token = JSON.parse(storedToken);
+                gapi.client.setToken(token);
+                // Schedule proactive refresh based on stored expiry
+                scheduleTokenRefresh(token);
                 await updateSigninStatus(true);
             } else {
                 updateSigninStatus(false);
@@ -156,14 +171,90 @@
             gisInited = true;
         }
 
-        authorizeButton.onclick = handleAuthClick;
-        signoutButton.onclick = handleSignoutClick;
+        // ─────────────────────────────────────────────
+        //  Token helpers
+        // ─────────────────────────────────────────────
 
-        function handleAuthClick() {
-            tokenClient.requestAccessToken({prompt: 'consent'});
+        /**
+         * Schedule a proactive silent token refresh before it expires.
+         * @param {object} token  – gapi token object (has expires_in field in seconds)
+         */
+        function scheduleTokenRefresh(token) {
+            if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
+
+            // expires_in comes from Google as seconds; we stored it at the time we received it,
+            // so use expires_at if we saved it, otherwise fallback to 3600 s.
+            const expiresInMs = token.expires_at
+                ? token.expires_at - Date.now()
+                : (parseInt(token.expires_in, 10) || 3600) * 1000;
+
+            const refreshInMs = Math.max(expiresInMs - TOKEN_REFRESH_BUFFER_MS, 0);
+
+            tokenRefreshTimer = setTimeout(() => {
+                console.log('Proactive silent token refresh...');
+                requestSilentToken();
+            }, refreshInMs);
         }
 
+        /** Request a new token silently (no popup). */
+        function requestSilentToken(onSuccess) {
+            if (onSuccess) afterRefreshCallbacks.push(onSuccess);
+            if (silentRefreshPending) return; // already in-flight
+            silentRefreshPending = true;
+            tokenClient.requestAccessToken({ prompt: 'none' });
+        }
+
+        // ─────────────────────────────────────────────
+        //  Token response handler (called by both
+        //  interactive login AND silent refresh)
+        // ─────────────────────────────────────────────
+        async function handleTokenResponse(resp) {
+            silentRefreshPending = false;
+
+            if (resp.error !== undefined) {
+                console.warn('Token response error:', resp.error);
+
+                // If silent refresh failed (e.g. user revoked access), show login screen
+                if (resp.error === 'interaction_required' || resp.error === 'access_denied') {
+                    localStorage.removeItem('google_token');
+                    gapi.client.setToken('');
+                    updateSigninStatus(false);
+                }
+
+                afterRefreshCallbacks = []; // discard waiting callbacks
+                return;
+            }
+
+            // Attach an absolute expiry timestamp so we can calculate refresh delay later
+            const rawToken = gapi.client.getToken();
+            rawToken.expires_at = Date.now() + (parseInt(rawToken.expires_in, 10) || 3600) * 1000;
+
+            localStorage.setItem('google_token', JSON.stringify(rawToken));
+            scheduleTokenRefresh(rawToken);
+
+            // Fire any callbacks that were waiting for a fresh token
+            const callbacks = afterRefreshCallbacks.splice(0);
+            callbacks.forEach(cb => cb());
+
+            // If we weren't already showing the app, do a full sign-in update
+            if (appContainer.classList.contains('hidden')) {
+                await updateSigninStatus(true);
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        //  Auth UI
+        // ─────────────────────────────────────────────
+        authorizeButton.onclick = () => {
+            // Interactive login: show account chooser only on first login
+            const hasToken = !!localStorage.getItem('google_token');
+            tokenClient.requestAccessToken({ prompt: hasToken ? 'none' : 'consent' });
+        };
+
+        signoutButton.onclick = handleSignoutClick;
+
         function handleSignoutClick() {
+            if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
             const token = gapi.client.getToken();
             if (token !== null) {
                 google.accounts.oauth2.revoke(token.access_token, () => {
@@ -171,20 +262,12 @@
                     localStorage.removeItem('google_token');
                     updateSigninStatus(false);
                 });
-            }
-        }
-        
-        async function handleTokenResponse(resp) {
-            if (resp.error !== undefined) {
-                console.log("Token response error:", resp.error);
+            } else {
+                localStorage.removeItem('google_token');
                 updateSigninStatus(false);
-                return;
             }
-            localStorage.setItem('google_token', JSON.stringify(gapi.client.getToken()));
-            await updateSigninStatus(true);
         }
 
-        // ========== THIS IS THE MODIFIED FUNCTION ==========
         async function updateSigninStatus(isSignedIn) {
             document.getElementById('initial-loader').classList.add('hidden');
 
@@ -192,35 +275,45 @@
                 authContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
                 initializeAppUI();
+
                 try {
-                    // Try to request user info to check if the token is still valid
                     const profile = await gapi.client.request({
                         path: 'https://www.googleapis.com/oauth2/v3/userinfo'
                     });
                     userEmail.textContent = profile.result.email;
+                    // Save email so we can show it even before the async call resolves next time
+                    localStorage.setItem('user_email', profile.result.email);
                 } catch (e) {
-                    console.error("Error fetching user profile, possibly expired token", e);
-                    // If there's an error because the token is expired (UNAUTHENTICATED)
+                    // Show cached email while refreshing
+                    const cachedEmail = localStorage.getItem('user_email');
+                    if (cachedEmail) userEmail.textContent = cachedEmail;
+
                     if (e.result && e.result.error && e.result.error.status === 'UNAUTHENTICATED') {
-                        console.log("Token expired or invalid. Attempting silent refresh...");
-                        // Try to get a new token silently without showing a popup
-                        tokenClient.requestAccessToken({ prompt: 'none' });
-                        // handleTokenResponse will be called on success, which will update the status again
-                    } else {
-                        // For other errors not related to authentication
-                        userEmail.textContent = "Could not load profile";
-                        appContainer.classList.add('hidden');
-                        authContainer.classList.remove('hidden');
+                        console.log('Token expired – attempting silent refresh...');
+                        requestSilentToken(async () => {
+                            // After refresh, re-fetch the profile
+                            try {
+                                const profile = await gapi.client.request({
+                                    path: 'https://www.googleapis.com/oauth2/v3/userinfo'
+                                });
+                                userEmail.textContent = profile.result.email;
+                                localStorage.setItem('user_email', profile.result.email);
+                            } catch (_) { /* keep cached email */ }
+                        });
                     }
+                    // Either way, stay on the app screen – don't force re-login
                 }
             } else {
+                if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
                 appContainer.classList.add('hidden');
                 authContainer.classList.remove('hidden');
                 userEmail.textContent = '';
             }
         }
-        // =================================================
 
+        // ─────────────────────────────────────────────
+        //  Project helpers (unchanged)
+        // ─────────────────────────────────────────────
         function getSavedProjects() {
             const projectsJSON = localStorage.getItem('userProjects');
             return projectsJSON ? JSON.parse(projectsJSON) : [];
@@ -250,6 +343,9 @@
             });
         }
 
+        // ─────────────────────────────────────────────
+        //  File / upload logic (unchanged)
+        // ─────────────────────────────────────────────
         fileInput.addEventListener('change', (event) => {
             selectedFiles = Array.from(event.target.files);
             updatePreview();
@@ -327,8 +423,22 @@
 
             } catch (error) {
                 console.error('Upload Error:', error);
-                const errorMessage = error.result ? error.result.error.message : (error.message || 'Unknown error');
-                showStatusModal(`เกิดข้อผิดพลาด: ${errorMessage}`, true, true);
+
+                // If upload failed due to expired token, refresh silently and retry once
+                const isAuthError = error.result && error.result.error &&
+                    (error.result.error.status === 'UNAUTHENTICATED' || error.result.error.code === 401);
+
+                if (isAuthError) {
+                    showStatusModal('กำลังต่ออายุ session... กรุณารอสักครู่');
+                    requestSilentToken(async () => {
+                        // Retry upload after token refresh
+                        uploadButton.disabled = false;
+                        handleUpload();
+                    });
+                } else {
+                    const errorMessage = error.result ? error.result.error.message : (error.message || 'Unknown error');
+                    showStatusModal(`เกิดข้อผิดพลาด: ${errorMessage}`, true, true);
+                }
             } finally {
                 updateUploadButton();
             }
